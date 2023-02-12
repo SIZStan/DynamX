@@ -4,22 +4,32 @@ import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.PhysicsCollisionObject;
 import com.jme3.bullet.collision.PhysicsRayTestResult;
 import com.jme3.bullet.collision.shapes.CollisionShape;
+import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
 import com.jme3.bullet.objects.PhysicsRigidBody;
+import com.jme3.bullet.objects.PhysicsSoftBody;
+import com.jme3.bullet.objects.infos.Aero;
+import com.jme3.bullet.objects.infos.Sbcp;
+import com.jme3.bullet.objects.infos.SoftBodyConfig;
+import com.jme3.bullet.objects.infos.SoftBodyMaterial;
+import com.jme3.bullet.util.NativeSoftBodyUtil;
+import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Transform;
 import com.jme3.math.Vector3f;
+import com.jme3.util.BufferUtils;
 import fr.dynamx.api.physics.BulletShapeType;
 import fr.dynamx.api.physics.EnumBulletShapeType;
 import fr.dynamx.api.physics.IPhysicsWorld;
-import fr.dynamx.common.DynamXContext;
 import fr.dynamx.common.entities.PhysicsEntity;
 import fr.dynamx.utils.maths.DynamXGeometry;
 import fr.dynamx.utils.maths.DynamXMath;
 import fr.dynamx.utils.optimization.QuaternionPool;
 import fr.dynamx.utils.optimization.Vector3fPool;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.World;
 
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -79,7 +89,7 @@ public class DynamXPhysicsHelper {
     public static PhysicsRaycastResult castRay(IPhysicsWorld iPhysicsWorld, Vector3f from, Vector3f dir, Predicate<EnumBulletShapeType> ignoredBody) {
         Vector3fPool.openPool();
         List<PhysicsRayTestResult> results = new LinkedList<>();
-        if(iPhysicsWorld != null) {
+        if (iPhysicsWorld != null) {
             iPhysicsWorld.getDynamicsWorld().rayTest(from, dir, results);
         }
 
@@ -133,4 +143,54 @@ public class DynamXPhysicsHelper {
                     (float) (direction.z * forgeStrength))));
         }
     }
+
+    public static IndexedMesh createClothGrid(int xLines, int zLines, float lineSpacing) {
+
+        int numVertices = xLines * zLines;
+        List<Vector3f> posBuffer = new ArrayList<>(3 * numVertices);
+        for (int xIndex = 0; xIndex < zLines; ++xIndex) {
+            float x = (2 * xIndex - zLines + 1) * lineSpacing / 2f;
+            for (int zIndex = 0; zIndex < xLines; ++zIndex) {
+                float z = (2 * zIndex - xLines + 1) * lineSpacing / 2f;
+                posBuffer.add(new Vector3f(x, 0, z));
+            }
+        }
+
+        int numTriangles = 2 * (xLines - 1) * (zLines - 1);
+        int numIndices = 3 * numTriangles;
+        List<Integer> indexBuffer = new ArrayList<>(numIndices);
+        for (int zIndex = 0; zIndex < xLines - 1; ++zIndex) {
+            for (int xIndex = 0; xIndex < zLines - 1; ++xIndex) {
+                // 4 vertices and 2 triangles forming a square
+                int vi0 = zIndex + xLines * xIndex;
+                int vi1 = vi0 + 1;
+                int vi2 = vi0 + xLines;
+                int vi3 = vi1 + xLines;
+                if ((xIndex + zIndex) % 2 == 0) {
+                    // major diagonal: joins vi1 to vi2
+                    indexBuffer.add(vi0);
+                    indexBuffer.add(vi1);
+                    indexBuffer.add(vi2);
+
+                    indexBuffer.add(vi3);
+                    indexBuffer.add(vi2);
+                    indexBuffer.add(vi1);
+                } else {
+                    // minor diagonal: joins vi0 to vi3
+                    indexBuffer.add(vi0);
+                    indexBuffer.add(vi1);
+                    indexBuffer.add(vi3);
+
+                    indexBuffer.add(vi3);
+                    indexBuffer.add(vi2);
+                    indexBuffer.add(vi0);
+                }
+            }
+        }
+        Vector3f[] pos = new Vector3f[3 * numVertices];
+        int[] indices = indexBuffer.stream().mapToInt(i -> i).toArray();
+        return new IndexedMesh(posBuffer.toArray(pos), indices);
+    }
+
+
 }

@@ -1,8 +1,20 @@
 package fr.dynamx.common.items.tools;
 
+import com.jme3.bullet.PhysicsSoftSpace;
+import com.jme3.bullet.PhysicsSpace;
+import com.jme3.bullet.collision.shapes.infos.IndexedMesh;
 import com.jme3.bullet.joints.JointEnd;
 import com.jme3.bullet.objects.PhysicsRigidBody;
+import com.jme3.bullet.objects.PhysicsSoftBody;
+import com.jme3.bullet.objects.infos.Aero;
+import com.jme3.bullet.objects.infos.Sbcp;
+import com.jme3.bullet.objects.infos.SoftBodyConfig;
+import com.jme3.bullet.objects.infos.SoftBodyMaterial;
+import com.jme3.bullet.util.NativeSoftBodyUtil;
+import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.util.BufferUtils;
 import fr.dynamx.api.entities.IModuleContainer;
 import fr.dynamx.api.physics.BulletShapeType;
 import fr.dynamx.api.physics.EnumBulletShapeType;
@@ -28,6 +40,7 @@ import fr.dynamx.utils.DynamXUtils;
 import fr.dynamx.utils.client.ClientDynamXUtils;
 import fr.dynamx.utils.optimization.QuaternionPool;
 import fr.dynamx.utils.optimization.Vector3fPool;
+import fr.dynamx.utils.physics.DynamXPhysicsHelper;
 import fr.dynamx.utils.physics.PhysicsRaycastResult;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
@@ -43,6 +56,8 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 
 import java.lang.reflect.InvocationTargetException;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -73,6 +88,46 @@ public class WrenchMode {
                         physicsHandler.setLinearVelocity(DynamXUtils.toVector3f(playerIn.getLookVec()).multLocal(20));
                     });
                 }
+            }
+
+        }
+    };
+
+    public static final WrenchMode SOFT_BODIES = new WrenchMode("soft_bodies", TextFormatting.GOLD) {
+        @Override
+        public void onWrenchRightClick(EntityPlayer playerIn, EnumHand handIn) {
+            if (!playerIn.world.isRemote) {
+                PhysicsSoftSpace dynamicsWorld = DynamXContext.getPhysicsWorld(playerIn.world).getDynamicsWorld();
+                if(playerIn.isSneaking()){
+                    dynamicsWorld.getSoftBodyList().forEach(dynamicsWorld::removeCollisionObject);
+                    return;
+                }
+                IndexedMesh clothGrid = DynamXPhysicsHelper.createClothGrid(100, 100, 0.01f);
+                PhysicsSoftBody flagPsb = new PhysicsSoftBody();
+
+                NativeSoftBodyUtil.appendFromNativeMesh(clothGrid, flagPsb);
+                flagPsb.setMargin(0.10f);
+                flagPsb.setMass(50);
+
+                SoftBodyConfig config = flagPsb.getSoftConfig();
+                config.set(Sbcp.Damping, 0.01f);
+                config.set(Sbcp.Drag, 0.5f);
+               // config.set(Sbcp.Lift, 10f);
+               //config.setAerodynamics(Aero.F_TwoSidedLiftDrag);
+                config.setPositionIterations(3);
+
+                SoftBodyMaterial softMaterial = flagPsb.getSoftMaterial();
+                softMaterial.setAngularStiffness(0f);
+
+                Quaternion rotation = new Quaternion();
+                rotation.fromAngles(FastMath.HALF_PI, 0f, 0f);
+                //flagPsb.applyRotation(rotation);
+                flagPsb.setPhysicsLocation(DynamXUtils.toVector3f(playerIn.getPosition()));
+
+                //flagPsb.generateClusters();
+
+                dynamicsWorld.addCollisionObject(flagPsb);
+
             }
 
         }
@@ -376,4 +431,5 @@ public class WrenchMode {
             }
         }
     }
+
 }

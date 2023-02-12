@@ -17,12 +17,15 @@ import fr.dynamx.utils.maths.DynamXGeometry;
 import fr.dynamx.utils.optimization.GlQuaternionPool;
 import fr.dynamx.utils.optimization.QuaternionPool;
 import fr.dynamx.utils.optimization.Vector3fPool;
+import jme3utilities.math.MyBuffer;
 import net.minecraft.client.renderer.GlStateManager;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.GLU;
 import org.lwjgl.util.glu.Sphere;
 
 import java.awt.*;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 
 public class PhysicsDebugRenderer {
@@ -32,55 +35,32 @@ public class PhysicsDebugRenderer {
         Quaternion physicsRotation = QuaternionPool.get();
         physicsSoftBody.getPhysicsLocation(physicsLocation);
         physicsSoftBody.getPhysicsRotation(physicsRotation);
-        /*BoundingBox bb = new BoundingBox();
-        physicsSoftBody.boundingBox(bb);
-        Vector3f min = new Vector3f();
-        Vector3f max = new Vector3f();
-        bb.getMin(min);
-        bb.getMax(max);
-        DynamXRenderUtils.drawBoundingBox(min, max, 1,0,0,1);*/
-        //GlStateManager.translate(physicsLocation.x, physicsLocation.y, physicsLocation.z);
-        //GlStateManager.rotate(GlQuaternionPool.get(physicsRotation));
 
-        //DynamXRenderUtils.drawBoundingBox(new Vector3f(1,1,1), 1,0,0,1);
-        GlStateManager.glBegin(GL11.GL_TRIANGLES);
-        /*System.out.println(physicsSoftBody.countFaces());
-        System.out.println("n "+physicsSoftBody.countNodes());*/
+        IntBuffer faces = physicsSoftBody.copyFaces(null);
+        FloatBuffer nodeLocations = physicsSoftBody.copyLocations(null);
         int numFaces = physicsSoftBody.countFaces();
+        float scl = 0.8f;
+        Color col = new Color(0, 155, 0);
         for (int i = 0; i < numFaces; i++) {
-            Vector3f nodePos1 = Vector3fPool.get();
-            Vector3f nodePos2 = Vector3fPool.get();
-            Vector3f nodePos3 = Vector3fPool.get();
-
-            Vector3f nodeNormal1 = Vector3fPool.get();
-            Vector3f nodeNormal2 = Vector3fPool.get();
-            Vector3f nodeNormal3 = Vector3fPool.get();
-
-            physicsSoftBody.nodeLocation(i, nodePos1);
-            physicsSoftBody.nodeLocation(i + 1, nodePos2);
-            physicsSoftBody.nodeLocation(i + 2, nodePos3);
-
-            physicsSoftBody.nodeNormal(i, nodeNormal1);
-            physicsSoftBody.nodeNormal(i + 1, nodeNormal2);
-            physicsSoftBody.nodeNormal(i + 2, nodeNormal3);
-            Vector3f tpt1 = Vector3fPool.get(), tpt2 = Vector3fPool.get();
-            tpt1 = nodePos2.subtract(nodePos1);
-            tpt2 = nodePos3.subtract(nodePos1);
-
-            Vector3f normal = tpt1.cross(tpt2);
-
-
-            /*GlStateManager.glNormal3f(nodeNormal1.x, nodeNormal1.y, nodeNormal1.z);
-            GlStateManager.glNormal3f(nodeNormal2.x, nodeNormal2.y, nodeNormal2.z);
-            GlStateManager.glNormal3f(nodeNormal3.x, nodeNormal3.y, nodeNormal3.z);*/
-
-            GlStateManager.glVertex3f(nodePos1.x, nodePos1.y, nodePos1.z);
-            GlStateManager.glVertex3f(nodePos2.x, nodePos2.y, nodePos2.z);
-            GlStateManager.glVertex3f(nodePos3.x, nodePos3.y, nodePos3.z);
-            GlStateManager.glNormal3f(normal.x, normal.y, normal.z);
+            int vi1 = faces.get(3 * i);
+            int vi2 = faces.get(3 * i + 1);
+            int vi3 = faces.get(3 * i + 2);
+            Vector3f nodePos1 = new Vector3f();
+            Vector3f nodePos2 = new Vector3f();
+            Vector3f nodePos3 = new Vector3f();
+            MyBuffer.get(nodeLocations, 3 * vi1, nodePos1);
+            MyBuffer.get(nodeLocations, 3 * vi2, nodePos2);
+            MyBuffer.get(nodeLocations, 3 * vi3, nodePos3);
+            Vector3f[] x = new Vector3f[]{nodePos1, nodePos2, nodePos3};
+            Vector3f c = x[0].add(x[1]).add(x[2]).divideLocal(3);
+            DynamXRenderUtils.drawTriangle(
+                    x[0],
+                    x[1],
+                    x[2],
+                    col);
 
         }
-        GlStateManager.glEnd();
+
         GlStateManager.popMatrix();
     }
 
