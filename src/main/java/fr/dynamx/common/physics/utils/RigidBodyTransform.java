@@ -25,6 +25,9 @@ public class RigidBodyTransform {
     }
 
     public void set(PhysicsRigidBody from) {
+        if (from == null) {
+            throw new IllegalArgumentException("PhysicsRigidBody cannot be null");
+        }
         from.getPhysicsLocation(position);
         from.getPhysicsRotation(rotation);
     }

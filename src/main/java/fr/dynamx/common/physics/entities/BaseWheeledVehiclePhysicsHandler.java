@@ -56,23 +56,34 @@ public abstract class BaseWheeledVehiclePhysicsHandler<T extends BaseVehicleEnti
         if (physicsWorld == null) {
             throw new NullPointerException("Physics world is null, wtf " + handledEntity.getEntityWorld() + " " + getCollisionObject());
         }
-        physicsWorld.addVehicle((PhysicsVehicle) getCollisionObject());
+        PhysicsVehicle collisionObject = (PhysicsVehicle) getCollisionObject();
+        if (collisionObject == null) {
+            DynamXMain.log.warn("Collision object is null when adding vehicle to world: " + handledEntity);
+            return;
+        }
+        physicsWorld.addVehicle(collisionObject);
     }
 
     @Override
     public void update() {
         super.update();
-        if (!handledEntity.getPackInfo().getFrictionPoints().isEmpty() && isBodyActive()) {
-            float horizSpeed = Vector3fPool.get(getLinearVelocity().x, 0, getLinearVelocity().z).length();
-            for (FrictionPoint f : handledEntity.getPackInfo().getFrictionPoints()) {
-                Vector3f pushDown = new Vector3f(-getLinearVelocity().x, -horizSpeed, -getLinearVelocity().z);
-                pushDown.multLocal(f.getIntensity());
-                applyImpulse(f.getPosition(), pushDown);
+        if (handledEntity.getPackInfo() != null && !handledEntity.getPackInfo().getFrictionPoints().isEmpty() && isBodyActive()) {
+            Vector3f linearVelocity = getLinearVelocity();
+            if (linearVelocity != null) {
+                float horizSpeed = Vector3fPool.get(linearVelocity.x, 0, linearVelocity.z).length();
+                for (FrictionPoint f : handledEntity.getPackInfo().getFrictionPoints()) {
+                    Vector3f pushDown = new Vector3f(-linearVelocity.x, -horizSpeed, -linearVelocity.z);
+                    pushDown.multLocal(f.getIntensity());
+                    applyImpulse(f.getPosition(), pushDown);
+                }
             }
         }
     }
 
     public float getSpeed(SpeedUnit speedUnit) {
+        if (physicsVehicle == null) {
+            return 0;
+        }
         switch (speedUnit) {
             case KMH:
                 return this.physicsVehicle.getCurrentVehicleSpeedKmHour();

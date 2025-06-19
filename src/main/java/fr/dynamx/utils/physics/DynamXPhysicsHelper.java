@@ -104,6 +104,13 @@ public class DynamXPhysicsHelper {
     }
 
     public static Vector3f getBodyLocalPoint(PhysicsCollisionObject rigidBody, Vector3f pointInWorld) {
+        if (rigidBody == null) {
+            throw new IllegalArgumentException("PhysicsCollisionObject cannot be null");
+        }
+        if (pointInWorld == null) {
+            throw new IllegalArgumentException("Point in world cannot be null");
+        }
+        
         Vector3f bodyLocation = Vector3fPool.get();
         rigidBody.getPhysicsLocation(bodyLocation);
 
@@ -116,9 +123,21 @@ public class DynamXPhysicsHelper {
     }
 
     public static void createExplosion(PhysicsEntity<?> physicsEntity, Vector3f explosionPosition, double explosionStrength) {
+        if (physicsEntity == null) {
+            return;
+        }
+        if (explosionPosition == null) {
+            return;
+        }
         if (physicsEntity.getPhysicsHandler() != null) {
             PhysicsRigidBody body = (PhysicsRigidBody) physicsEntity.getPhysicsHandler().getCollisionObject();
+            if (body == null) {
+                return;
+            }
             Vector3f centerOfMass = physicsEntity.physicsPosition;
+            if (centerOfMass == null) {
+                return;
+            }
             double distance = DynamXGeometry.distanceBetween(explosionPosition, centerOfMass);
             Vector3f direction = centerOfMass.subtract(explosionPosition).normalize().add(new Vector3f(0.0f, 2.0f, 0.0f)).normalize();
             double forgeStrength = (1.0D - MathHelper.clamp(distance / explosionStrength * 2.0D, 0.0D, 1.0D)) * 15.0D;

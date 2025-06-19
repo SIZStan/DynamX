@@ -11,6 +11,7 @@ import fr.dynamx.utils.maths.DynamXGeometry;
 import fr.dynamx.utils.optimization.QuaternionPool;
 import fr.dynamx.utils.optimization.Vector3fPool;
 import lombok.Getter;
+import fr.dynamx.common.DynamXMain;
 
 import javax.annotation.Nullable;
 
@@ -99,10 +100,25 @@ public abstract class AbstractEntityPhysicsHandler<T extends PhysicsEntity<?>, P
      * Ie : we copy the current physics state from the collision object state
      */
     public void postUpdate() {
+        if (collisionObject == null) {
+            DynamXMain.log.warn("Collision object is null in postUpdate for entity " + handledEntity);
+            return;
+        }
+        
         isBodyActive = collisionObject.isActive();
 
         Vector3f physicsPosition = collisionObject.getPhysicsLocation(Vector3fPool.get());
+        if (physicsPosition == null) {
+            DynamXMain.log.warn("Physics position is null for entity " + handledEntity);
+            return;
+        }
+        
         Quaternion physicsRotation = collisionObject.getPhysicsRotation(QuaternionPool.get());
+        if (physicsRotation == null) {
+            DynamXMain.log.warn("Physics rotation is null for entity " + handledEntity);
+            return;
+        }
+        
         Vector3f pos = Vector3fPool.get(physicsPosition);
         Vector3f centerOfMass = getCenterOfMass();
         if (centerOfMass != null) {
@@ -192,6 +208,10 @@ public abstract class AbstractEntityPhysicsHandler<T extends PhysicsEntity<?>, P
      * @param rotationalVel The rotational velocity
      */
     public void updatePhysicsState(Vector3f pos, Quaternion rotation, Vector3f linearVel, Vector3f rotationalVel) {
+        if (pos == null || rotation == null || linearVel == null || rotationalVel == null) {
+            DynamXMain.log.warn("Null parameter in updatePhysicsState for entity " + handledEntity);
+            return;
+        }
         Vector3f centerOfMass = getCenterOfMass();
         if (centerOfMass != null)
             pos.addLocal(DynamXGeometry.rotateVectorByQuaternion(centerOfMass, rotation).multLocal(-1));
@@ -211,6 +231,10 @@ public abstract class AbstractEntityPhysicsHandler<T extends PhysicsEntity<?>, P
      * @param rotationalVel The rotational velocity
      */
     public void updatePhysicsStateFromNet(Vector3f pos, Quaternion rotation, Vector3f linearVel, Vector3f rotationalVel) {
+        if (pos == null || rotation == null || linearVel == null || rotationalVel == null) {
+            DynamXMain.log.warn("Null parameter in updatePhysicsStateFromNet for entity " + handledEntity);
+            return;
+        }
         //Vector3f centerOfMass = getCenterOfMass();
         //if (centerOfMass != null)
         //  pos.addLocal(DynamXGeometry.rotateVectorByQuaternion(centerOfMass, rotation).multLocal(-1));
