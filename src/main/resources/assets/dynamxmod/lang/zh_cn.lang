@@ -1,0 +1,137 @@
+itemGroup.dynamxmod_vehicle=DynamX 载具栏
+itemGroup.dynamxmod_object=DynamX 物品栏
+
+item.dynamxmod.slopes.name=斜坡工具
+item.dynamxmod.wrench.name=扳手
+item.dynamxmod.ragdoll.name=布娃娃生成器
+item.dynamxmod.shockwave.name=冲击波生成器
+
+key.categories.dynamxmod=DynamX
+key.brake=手刹
+key.camin=镜头拉近
+key.camout=镜头拉远
+key.cammode=切换镜头模式
+key.watchbehind=后视
+key.debug=调试菜单
+key.speedlimit=限速器
+key.startEngine=发动机开关
+key.pickobject=拾取物品
+key.takeobject=获取物品
+key.toggleLockDoor=切换门锁
+key.attachTrailer=连接拖车
+key.powerup=增加功率（直升机）
+key.powerdown=减少功率（直升机）
+key.helicopter_pitch_forward=前倾（直升机）
+key.helicopter_pitch_backward=后倾（直升机）
+key.helicopter_yaw_left=左转（直升机）
+key.helicopter_yaw_right=右转（直升机）
+key.lock_rotation=锁定镜头旋转（直升机）
+
+slopes.config.title=自动斜坡配置：
+slopes.config.dalls=忽略台阶
+slopes.config.diags=反转对角线
+slopes.config.orientation=应用朝向：%s
+slopes.config.blocks=忽略方块：
+slopes.config.add=添加
+slopes.config.blocknotfound=未找到方块
+slopes.config.cancel=取消
+slopes.config.apply=应用
+
+slopes.clear.create=§a[创建] 斜坡选择已重置
+slopes.clear.delete=§d[删除] 选择区域已重置
+slopes.clear.auto=§6[自动] 选择区域已重置
+
+slopes.changemode.create=§a模式设置为 [创建]
+slopes.changemode.delete=§d模式设置为 [删除]
+slopes.changemode.auto=§6模式设置为 [自动]
+
+cmd.slopes.noitem=§c主手必须持有斜坡工具！
+cmd.slopes.needcreate=§c必须处于 [创建] 模式才能创建斜坡！
+cmd.slopes.create.points=§4创建斜坡至少需要选择4个点
+cmd.slopes.create.error=§4未添加斜坡，请检查点的顺序！
+cmd.slopes.create.terrainerror=§4无法加载地形，请先用载具加载后重试！
+cmd.slopes.create.result=%s [创建] 计算并添加斜坡用时 %s 毫秒
+cmd.slopes.create.resulterror=§4加载地形时发生错误，请删除该区域的斜坡后重试
+cmd.slopes.create.success=§a[创建] 斜坡已添加！
+cmd.slopes.needdelete=§c必须处于 [删除] 模式才能删除斜坡！
+cmd.slopes.delete.points=§c[删除] 您尚未设置两个界限点
+cmd.slopes.delete.terrainerror=§4无法加载区块 %s 的地形，请先用载具加载后重试！
+cmd.slopes.delete.selerror=§4在区域中找到至少一个斜坡，但区域未完全覆盖所有斜坡
+cmd.slopes.delete.selempty=§4在区域中未找到斜坡
+cmd.slopes.delete.result=已删除选定区域中的 %s 个斜坡！
+cmd.slopes.needauto=§6必须处于 [自动] 模式才能生成斜坡！
+cmd.slopes.auto.points=§6[自动] 您尚未设置两个界限点
+cmd.slopes.auto.working=§6[自动] 正在生成斜坡...
+cmd.slopes.auto.error=§4未创建斜坡，请检查支撑斜坡的方块的朝向和配置！
+cmd.slopes.auto.result=§6[自动] 斜坡生成完成，用时 %s 毫秒
+cmd.slopes.auto.success=§a[自动] 斜坡已添加！
+
+hud.car.speedlimit=速度限制：%s
+
+dynamx.error.required_property=必需属性
+dynamx.error.obj_duplicated_custom_textures=重复的自定义纹理
+dynamx.error.armor_error=护甲部件错误
+dynamx.error.updates=DynamX 有可用更新
+dynamx.error.syntax_error=语法错误
+dynamx.error.deprecated_prop=已弃用的属性（将在未来版本移除）
+dynamx.error.deprecated_prop_format=props_ 文件已弃用
+dynamx.error.deprecated_light_format=在一个部件使用多个灯光时，传统灯光部件已弃用。现在应该在 'MultiLight' 子属性中声明。
+dynamx.error.duplicated_multi_light=3D模型的同一对象使用了多个 'MultiLight' 属性。您必须合并它们。
+dynamx.error.missing_prop=未知的包文件属性
+dynamx.error.unknown_sub_info=未知的子属性
+dynamx.error.deprecated_seat_config=请使用"Seat_Name"（而不是"NameSeat"）来命名座位。在名称中：
+dynamx.error.deprecated_door_config=请使用"Door_Name"（而不是"NameDoor"）来命名门。在名称中：
+dynamx.error.sound_error=无效的声音配置
+dynamx.error.config_error=配置错误
+dynamx.error.obj_none_material=使用 BlockBench 'none' 材质的对象
+dynamx.error.mps_error=无法连接到 DynamX 服务器
+dynamx.error.addon_init_error=插件初始化错误
+dynamx.error.pack_requirements=未满足包的要求
+dynamx.error.collision_shape_error=无法加载物理碰撞形状
+dynamx.error.complete_object_error=无法完成对象
+dynamx.error.property_parse_error=无法解析以下属性。请查看文档了解正确语法。
+dynamx.error.loading_tasks=加载任务错误
+dynamx.error.addon_load_error=无法加载插件！
+dynamx.error.res_pack_load_fail=资源（模型和纹理）检测失败
+dynamx.error.pack_load_fail=无法加载内容包
+dynamx.error.missing_pack_info=缺少包信息
+dynamx.error.pack_file_load_error=无法加载包文件
+dynamx.error.addon_error=插件加载错误
+dynamx.error.obj_error=Obj 加载错误
+dynamx.error.wheel_invalid_suspaxis=无效的车轮悬挂轴
+dynamx.error.too_many_variants=材质变体过多
+dynamx.error.missing_depends_on_node=一个节点依赖于另一个用于渲染的节点，但该节点不存在：
+dynamx.error.duplicate_scene=渲染的重复部件：
+dynamx.error.wheel_no_model=车轮没有独立的3D模型，也没有指定"Rim"对象名称用于渲染。
+dynamx.error.position_not_found_in_model=无法从3D模型确定部件位置，且未在部件配置中设置。
+dynamx.error.seat_door_not_found=未找到座位关联的门
+dynamx.error.invalid_view_type=无效的物品视图类型
+dynamx.error.mixed_item_transforms_info=混合使用了旧的"ItemTranslate/ItemRotate/ItemScale"和新的"ItemTransforms"属性
+
+dynamx.reload.models.errors=§c[DynamX] 部分模型存在错误，请使用调试菜单查看
+
+trailer.wrench.first=现在点击另一个载具
+trailer.attach.fail=无法将 %s 连接到 %s
+trailer.attached=已将 %s 连接到 %s
+trailer.detached=§7拖车已分离
+trailer.attach.toofar=§c连接点相距太远
+
+wrench.mode.set.attach_objects=§c扳手模式设置为连接物体
+wrench.mode.set.attach_trailers=§a扳手模式设置为连接拖车
+wrench.mode.set.respawn_entities=§6扳手模式设置为重生实体
+wrench.mode.set.change_skins=§9扳手模式设置为更换载具皮肤
+wrench.mode.set.entity_seat=§d扳手模式设置为将实体放入座位
+wrench.mode.set.none=§c扳手已禁用
+wrench.mode.set.launch_entities=§6扳手模式设置为发射道具
+wrench.mode.mode=模式：%s
+wrench.mode.attach_objects=§c连接物体
+wrench.mode.attach_trailers=§a连接拖车
+wrench.mode.respawn_entities=§6重生实体
+wrench.mode.change_skins=§9更换载具皮肤
+wrench.mode.entity_seat=§d将实体放入座位
+wrench.mode.none=§c扳手已禁用
+wrench.mode.launch_entities=§6发射道具
+
+dynamx.item.variant=变体：%s
+dynamx.item.description=描述：%s
+dynamx.item.pack=包：%s 
