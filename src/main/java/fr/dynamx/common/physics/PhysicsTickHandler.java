@@ -4,6 +4,7 @@ import fr.dynamx.api.network.EnumPacketTarget;
 import fr.dynamx.api.physics.IPhysicsWorld;
 import fr.dynamx.common.DynamXContext;
 import fr.dynamx.common.DynamXMain;
+import fr.dynamx.utils.DynamXConfig;
 import fr.dynamx.common.handlers.TaskScheduler;
 import fr.dynamx.common.network.packets.MessageCollisionDebugDraw;
 import fr.dynamx.server.command.CmdNetworkConfig;
@@ -108,40 +109,111 @@ public class PhysicsTickHandler {
     }
 
     private boolean canTickServer(World world) {
+        // 基础安全检查
+        if (world == null) {
+            return false;
+        }
+        
+        // 启用安全模式时的额外检查
+        if (DynamXConfig.enableSafeMode) {
+            if (world.provider == null) {
+                DynamXMain.log.warn("World provider is null for world, skipping physics tick");
+                return false;
+            }
+            
+            // 检查是否为临时世界
+            String worldName = world.provider.getDimensionType().getName();
+            if (DynamXConfig.isTemporaryWorld(worldName)) {
+                return false; // 静默跳过临时世界
+            }
+            
+            // 检查维度是否在白名单中
+            int dimensionId = world.provider.getDimension();
+            if (!DynamXConfig.isDimensionAllowed(dimensionId)) {
+                return false; // 静默跳过非白名单维度
+            }
+        }
+        
         return world != null && DynamXMain.proxy.shouldUseBulletSimulation(world) && DynamXContext.getPhysicsWorld(world) != null;
     }
 
     private void tickWorldPhysics(TickEvent.Phase phase, World world) {
-        IPhysicsWorld physicsWorld = DynamXContext.getPhysicsWorld(world);
-        if (phase == TickEvent.Phase.END) {
-            physicsWorld.tickEnd();
-            return;
-        }
-        // START phase
-        QuaternionPool.openPool(SubClassPool.TICK_PHYSICS_WORLD);
-        Vector3fPool.openPool(SubClassPool.TICK_PHYSICS_WORLD);
-
-        physicsWorld.tickStart();
-
-        float deltaTimeSecond = getDeltaTimeMilliseconds() * 1.0E-3F;
-        if (deltaTimeSecond > 0.5f) // game was paused ?
-            deltaTimeSecond = 0.05f;
-
-        Profiler.get().start(Profiler.Profiles.STEP_SIMULATION);
-        physicsWorld.stepSimulation(deltaTimeSecond);
-        Profiler.get().end(Profiler.Profiles.STEP_SIMULATION);
-
-        if (physicsWorld.getDynamicsWorld() != null) {
-            physicsWorld.getDynamicsWorld().getJointList().forEach(joint -> {
-                if ((joint.getBodyA() != null && !physicsWorld.getDynamicsWorld().contains(joint.getBodyA()))
-                        || (joint.getBodyB() != null && !physicsWorld.getDynamicsWorld().contains(joint.getBodyB()))) {
-                    physicsWorld.removeJoint(joint);
+        try {
+            IPhysicsWorld physicsWorld = DynamXContext.getPhysicsWorld(world);
+            
+            // 安全检查：确保物理世界存在
+            if (physicsWorld == null) {
+                if (DynamXConfig.enableSafeMode) {
+                    DynamXMain.log.warn("Physics world is null for dimension {}, skipping tick", world.provider.getDimension());
                 }
-            });
-        }
+                return;
+            }
+            
+            if (phase == TickEvent.Phase.END) {
+                physicsWorld.tickEnd();
+                return;
+            }
+            
+            // START phase
+            QuaternionPool.openPool(SubClassPool.TICK_PHYSICS_WORLD);
+            Vector3fPool.openPool(SubClassPool.TICK_PHYSICS_WORLD);
 
-        Vector3fPool.closePool();
-        QuaternionPool.closePool();
+            physicsWorld.tickStart();
+
+            float deltaTimeSecond = getDeltaTimeMilliseconds() * 1.0E-3F;
+            if (deltaTimeSecond > 0.5f) // game was paused ?
+                deltaTimeSecond = 0.05f;
+
+            Profiler.get().start(Profiler.Profiles.STEP_SIMULATION);
+            
+            // 安全模式：在关键操作前检查物理世界状态
+            if (DynamXConfig.enableSafeMode) {
+                if (physicsWorld.getDynamicsWorld() == null) {
+                    DynamXMain.log.warn("Dynamics world is null for dimension {}, skipping simulation", world.provider.getDimension());
+                    Profiler.get().end(Profiler.Profiles.STEP_SIMULATION);
+                    Vector3fPool.closePool();
+                    QuaternionPool.closePool();
+                    return;
+                }
+            }
+            
+            physicsWorld.stepSimulation(deltaTimeSecond);
+            Profiler.get().end(Profiler.Profiles.STEP_SIMULATION);
+
+            if (physicsWorld.getDynamicsWorld() != null) {
+                // 安全检查：确保joint列表存在
+                if (DynamXConfig.enableSafeMode && physicsWorld.getDynamicsWorld().getJointList() == null) {
+                    DynamXMain.log.warn("Joint list is null for dimension {}, skipping joint cleanup", world.provider.getDimension());
+                } else {
+                    physicsWorld.getDynamicsWorld().getJointList().forEach(joint -> {
+                        if ((joint.getBodyA() != null && !physicsWorld.getDynamicsWorld().contains(joint.getBodyA()))
+                                || (joint.getBodyB() != null && !physicsWorld.getDynamicsWorld().contains(joint.getBodyB()))) {
+                            physicsWorld.removeJoint(joint);
+                        }
+                    });
+                }
+            }
+
+            Vector3fPool.closePool();
+            QuaternionPool.closePool();
+            
+        } catch (Exception e) {
+            // 捕获并记录所有异常，防止崩溃
+            if (DynamXConfig.enableSafeMode) {
+                DynamXMain.log.error("Error during physics world tick for dimension {}: {}", world.provider.getDimension(), e.getMessage());
+                DynamXMain.log.debug("Full stack trace:", e);
+                
+                // 清理资源池
+                try {
+                    Vector3fPool.closePool();
+                    QuaternionPool.closePool();
+                } catch (Exception cleanupException) {
+                    DynamXMain.log.error("Error during cleanup: {}", cleanupException.getMessage());
+                }
+            } else {
+                throw new RuntimeException("Physics tick error for dimension " + world.provider.getDimension(), e);
+            }
+        }
     }
 
     private void sendClientsDebug() {

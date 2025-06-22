@@ -8,6 +8,7 @@ import fr.dynamx.common.network.sync.SPPhysicsEntitySynchronizer;
 import fr.dynamx.common.physics.PhysicsTickHandler;
 import fr.dynamx.common.physics.entities.AbstractEntityPhysicsHandler;
 import fr.dynamx.common.physics.world.BuiltinPhysicsWorld;
+import fr.dynamx.utils.DynamXConfig;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
@@ -48,7 +49,37 @@ public abstract class CommonProxy {
      * @return True if the bullet physics engine should be used for the world. Always true except for client single player worlds
      */
     public boolean shouldUseBulletSimulation(World world) {
-        return DynamXContext.getPhysicsWorldPerDimensionMap().containsKey(world.provider.getDimension());
+        if (world == null || world.provider == null) {
+            if (DynamXConfig.enableSafeMode) {
+                DynamXMain.log.warn("World or world provider is null, disabling physics");
+            }
+            return false;
+        }
+        
+        int dimensionId = world.provider.getDimension();
+        
+        if (!DynamXConfig.isDimensionAllowed(dimensionId)) {
+            if (DynamXConfig.enableDimensionWhitelist) {
+                DynamXMain.log.debug("Dimension {} is not in whitelist, disabling DynamX physics", dimensionId);
+            }
+            return false;
+        }
+        
+        String worldName = world.provider.getDimensionType().getName();
+        if (DynamXConfig.isTemporaryWorld(worldName)) {
+            DynamXMain.log.info("Detected temporary world '{}', disabling DynamX physics to prevent crashes", worldName);
+            return false;
+        }
+        
+        if (world.getSaveHandler() != null && world.getSaveHandler().getWorldDirectory() != null) {
+            String worldDirName = world.getSaveHandler().getWorldDirectory().getName();
+            if (DynamXConfig.isTemporaryWorld(worldDirName)) {
+                DynamXMain.log.info("Detected temporary world directory '{}', disabling DynamX physics to prevent crashes", worldDirName);
+                return false;
+            }
+        }
+        
+        return DynamXContext.getPhysicsWorldPerDimensionMap().containsKey(dimensionId);
     }
 
     /**
@@ -80,11 +111,47 @@ public abstract class CommonProxy {
      * Creates the physics world
      */
     public void initPhysicsWorld(World world) {
-        if (DynamXContext.getPhysicsWorldPerDimensionMap().containsKey(world.provider.getDimension())) {
-            DynamXMain.log.warn("Physics world of " + world + " is already loaded ! Keeping the previously loaded world.");
+        if (DynamXConfig.enableSafeMode) {
+            if (world == null) {
+                DynamXMain.log.error("Cannot initialize physics world: world is null");
+                return;
+            }
+            if (world.provider == null) {
+                DynamXMain.log.error("Cannot initialize physics world: world provider is null");
+                return;
+            }
+        }
+        
+        int dimensionId = world.provider.getDimension();
+        
+        if (!DynamXConfig.isDimensionAllowed(dimensionId)) {
+            DynamXMain.log.debug("Skipping physics world initialization for dimension {} (not in whitelist)", dimensionId);
             return;
         }
-        DynamXContext.getPhysicsWorldPerDimensionMap().put(world.provider.getDimension(), new BuiltinPhysicsWorld(world, false));
+        
+        String worldName = world.provider.getDimensionType().getName();
+        if (DynamXConfig.isTemporaryWorld(worldName)) {
+            DynamXMain.log.info("Skipping physics world initialization for temporary world '{}'", worldName);
+            return;
+        }
+        
+        if (DynamXContext.getPhysicsWorldPerDimensionMap().containsKey(dimensionId)) {
+            DynamXMain.log.warn("Physics world of {} is already loaded ! Keeping the previously loaded world.", world);
+            return;
+        }
+        
+        try {
+            DynamXMain.log.info("Initializing physics world for dimension {} (world: {})", dimensionId, worldName);
+            DynamXContext.getPhysicsWorldPerDimensionMap().put(dimensionId, new BuiltinPhysicsWorld(world, false));
+        } catch (Exception e) {
+            DynamXMain.log.error("Failed to initialize physics world for dimension {}: {}", dimensionId, e.getMessage());
+            if (DynamXConfig.enableSafeMode) {
+                DynamXMain.log.error("Stack trace:", e);
+                DynamXContext.getPhysicsWorldPerDimensionMap().remove(dimensionId);
+            } else {
+                throw e;
+            }
+        }
     }
 
     public abstract void schedulePacksInit();

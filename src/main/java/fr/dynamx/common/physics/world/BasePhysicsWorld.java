@@ -14,6 +14,7 @@ import fr.dynamx.client.handlers.ClientDebugSystem;
 import fr.dynamx.client.network.ClientPhysicsSyncManager;
 import fr.dynamx.common.DynamXContext;
 import fr.dynamx.common.DynamXMain;
+import fr.dynamx.utils.DynamXConfig;
 import fr.dynamx.common.entities.PhysicsEntity;
 import fr.dynamx.common.physics.CollisionsHandler;
 import fr.dynamx.common.physics.terrain.PhysicsWorldTerrain;
@@ -90,28 +91,73 @@ public abstract class BasePhysicsWorld implements IPhysicsWorld {
      * @param profiler The current profiler
      */
     protected void flushOperations(Profiler profiler) {
-        profiler.start(Profiler.Profiles.ADD_REMOVE_BODIES);
-        {
-            try {
-                while (!scheduledTasks.isEmpty()) {
-                    scheduledTasks.remove().run();
-                }
-            } catch (Exception e) {
-                scheduledTasksLock.set(true);
-                DynamXMain.log.error("[SCHED_ERR] There is " + scheduledTasks.size() + " real scheduled tasks remaining");
-                DynamXMain.log.error("[SCHED_ERR] Error executing task !", e);
-                try {
-                    DynamXMain.log.error("[SCHED_ERR] Scheduled tasks : " + scheduledTasks);
-                } catch (Exception exception) {
-                    DynamXMain.log.fatal("[SCHED_ERR] Additional error while printing current tasks", e);
-                }
-                throw e;
-            }
-            while (!operations.isEmpty()) {
-                operations.remove().execute(this, dynamicsWorld, joints, entities);
+        if (DynamXConfig.enableSafeMode) {
+            // 安全检查：确保物理世界已初始化
+            if (dynamicsWorld == null) {
+                DynamXMain.log.warn("Dynamics world is null in flushOperations for dimension {}, clearing operations queue", mcWorld.provider.getDimension());
+                operations.clear();
+                return;
             }
         }
+        
+        profiler.start(Profiler.Profiles.ADD_REMOVE_BODIES);
+        
+        // 处理物理操作 - 恢复原始逻辑，但添加异常处理
+        while (!operations.isEmpty()) {
+            PhysicsWorldOperation<?> operation = operations.poll();
+            if (operation != null) {
+                try {
+                    operation.execute(this, dynamicsWorld, joints, entities);
+                } catch (Exception e) {
+                    if (DynamXConfig.enableSafeMode) {
+                        DynamXMain.log.error("Error executing physics operation for dimension {}: {}", mcWorld.provider.getDimension(), e.getMessage());
+                        DynamXMain.log.debug("Operation details - Type: {}, Stack trace:", operation.getClass().getSimpleName(), e);
+                        // 继续处理其他操作，不中断整个流程
+                    } else {
+                        throw new RuntimeException("Physics operation failed", e);
+                    }
+                }
+            }
+        }
+        
         profiler.end(Profiler.Profiles.ADD_REMOVE_BODIES);
+        
+        // 处理计划任务 - 恢复原始逻辑，但添加异常处理
+        if (!scheduledTasksLock.get()) {
+            try {
+                while (!scheduledTasks.isEmpty()) {
+                    Runnable task = scheduledTasks.poll();
+                    if (task != null) {
+                        try {
+                            task.run();
+                        } catch (Exception e) {
+                            if (DynamXConfig.enableSafeMode) {
+                                DynamXMain.log.error("Error executing scheduled task for dimension {}: {}", mcWorld.provider.getDimension(), e.getMessage());
+                                DynamXMain.log.debug("Task error stack trace:", e);
+                                // 设置锁以防止后续任务执行
+                                scheduledTasksLock.set(true);
+                                DynamXMain.log.error("[SCHED_ERR] There are {} scheduled tasks remaining", scheduledTasks.size());
+                                break; // 停止处理更多任务
+                            } else {
+                                scheduledTasksLock.set(true);
+                                DynamXMain.log.error("[SCHED_ERR] There are {} scheduled tasks remaining", scheduledTasks.size());
+                                DynamXMain.log.error("[SCHED_ERR] Error executing task !", e);
+                                try {
+                                    DynamXMain.log.error("[SCHED_ERR] Scheduled tasks : " + scheduledTasks);
+                                } catch (Exception exception) {
+                                    DynamXMain.log.fatal("[SCHED_ERR] Additional error while printing current tasks", e);
+                                }
+                                throw e;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                if (!DynamXConfig.enableSafeMode) {
+                    throw e; // 重新抛出异常如果不在安全模式
+                }
+            }
+        }
     }
 
     /**

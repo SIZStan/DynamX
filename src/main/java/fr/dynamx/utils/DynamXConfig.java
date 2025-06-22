@@ -41,6 +41,17 @@ public class DynamXConfig
     public static boolean disableSSLCertification;
     public static Set<String> ignoreCollisionEntities;
 
+    // Crash Fix Configuration - 崩溃修复配置
+    public static boolean enableDimensionWhitelist;
+    public static int[] dimensionWhitelist;
+    public static boolean enableTempWorldDetection;
+    public static boolean enableSafeMode;
+    public static String[] tempWorldKeywords;
+    
+    // 用于减少日志刷屏的缓存
+    private static final Set<Integer> loggedDimensions = new HashSet<>();
+    private static final Set<String> loggedTempWorlds = new HashSet<>();
+
     @Getter
     private static float masterSoundVolume = 0.8f;
     @Getter
@@ -112,6 +123,14 @@ public class DynamXConfig
         // Sounds
         masterSoundVolume = (float) cfg.get("Sounds", "Volume", 0.8f, "The volume of DynamX sounds (engines...)").getDouble();
         maxSounds = cfg.get("Sounds", "MaxSounds", 8, "The maximum amount of sounds DynamX can play at the same time").getInt();
+
+        // Crash Fix - 崩溃修复配置
+        enableDimensionWhitelist = cfg.getBoolean("EnableDimensionWhitelist", "CrashFix", true, "Enable dimension whitelist to prevent crashes in temporary worlds");
+        dimensionWhitelist = cfg.get("CrashFix", "DimensionWhitelist", new int[]{0, -1, 1, 324}, "List of dimension IDs where DynamX physics should be enabled. Default: [0, -1, 1] (Overworld, Nether, End)").getIntList();
+        enableTempWorldDetection = cfg.getBoolean("EnableTempWorldDetection", "CrashFix", true, "Automatically detect and skip temporary worlds to prevent crashes");
+        enableSafeMode = cfg.getBoolean("EnableSafeMode", "CrashFix", true, "Enable additional safety checks to prevent crashes");
+        tempWorldKeywords = cfg.getStringList("TempWorldKeywords", "CrashFix", new String[]{"temp", "temporary", "hotload", "reload", "dungeon"}, "Keywords to identify temporary worlds");
+
         cfg.save();
     }
 
@@ -119,5 +138,52 @@ public class DynamXConfig
         masterSoundVolume = volume;
         cfg.get("Sounds", "Volume", 1f, "The volume of DynamX sounds (engines...)").set(volume);
         cfg.save();
+    }
+
+    /**
+     * 检查指定维度是否允许使用物理引擎
+     */
+    public static boolean isDimensionAllowed(int dimensionId) {
+        if (!enableDimensionWhitelist) {
+            return true; // 如果未启用白名单，所有维度都允许
+        }
+        
+        boolean allowed = false;
+        for (int allowedDim : dimensionWhitelist) {
+            if (allowedDim == dimensionId) {
+                allowed = true;
+                break;
+            }
+        }
+        
+        // 只在第一次遇到时记录日志，避免刷屏
+        if (!allowed && !loggedDimensions.contains(dimensionId)) {
+            loggedDimensions.add(dimensionId);
+            // 这里不输出日志，在shouldUseBulletSimulation中统一处理
+        }
+        
+        return allowed;
+    }
+    
+    /**
+     * 检查世界名称是否匹配临时世界模式
+     */
+    public static boolean isTemporaryWorld(String worldName) {
+        if (!enableTempWorldDetection || worldName == null) {
+            return false;
+        }
+        
+        String lowerName = worldName.toLowerCase();
+        for (String keyword : tempWorldKeywords) {
+            if (lowerName.contains(keyword.toLowerCase())) {
+                // 只在第一次遇到时记录日志，避免刷屏
+                if (!loggedTempWorlds.contains(worldName)) {
+                    loggedTempWorlds.add(worldName);
+                    // 这里不输出日志，在shouldUseBulletSimulation中统一处理
+                }
+                return true;
+            }
+        }
+        return false;
     }
 }
